@@ -1,0 +1,78 @@
+services:
+  backend:
+    user: root
+    build:
+      context: ./backend
+      target: dev
+    container_name: clouddocs_backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=redis://redis:6379
+      - CLIENT_URL=http://localhost:5173
+      - LOG_LEVEL=info
+      - JWT_SECRET=${JWT_SECRET:-clouddocs_jwt_secret_dev_key_12345}
+      - JWT_EXPIRES_IN=7d
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - clouddocs_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: clouddocs_frontend
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./frontend/.env
+    environment:
+      - VITE_API_BASE_URL=http://localhost:5000/api/v1
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - clouddocs_network
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    container_name: clouddocs_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - clouddocs_network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: clouddocs_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - clouddocs_network
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  clouddocs_network:
+    driver: bridge
